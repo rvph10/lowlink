@@ -1,0 +1,20 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    container_name: lowlink-app-staging
+    ports:
+      - '4000:3000'
+    env_file:
+      - .env.staging
+    depends_on:
+      - redis
+    command: npm run start
+    # Documentation: Runs production build for staging, different port (4000)
+
+  redis:
+    image: redis:7-alpine
+    container_name: lowlink-redis-staging
+    ports:
+      - '6380:6379'
+    # Documentation: Staging Redis instance 

@@ -1,0 +1,14 @@
+# .dockerignore for lowlink: Next.js/TypeScript
+node_modules
+.next
+out
+coverage
+dist
+*.log
+*.env*
+.DS_Store
+.vscode
+.idea
+.git
+.gitignore
+npm-debug.log 

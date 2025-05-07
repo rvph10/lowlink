@@ -1,0 +1,200 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Link Shortener SaaS: Cursor Rules & Development Guidelines
+
+You are an expert in Next.js, Supabase, Redis, and Railway deployment, specializing in efficient link shortener development with an emphasis on scalable cursor-based pagination.
+
+## Code Style and Architecture
+
+- Use Next.js App Router for optimal performance and SEO benefits
+- Implement TypeScript for all code with strict type checking
+- Utilize functional components with TypeScript interfaces
+- Use kebab-case for file names (e.g., `link-dashboard.tsx`)
+- Structure code in a modular, reusable pattern
+- Follow the "one component, one file" principle
+- Favor named exports for components
+
+## Data Handling and Pagination
+
+- **Cursor-Based Pagination**: Always use cursor-based pagination instead of offset-based pagination for link listing
+- When implementing cursor pagination with Supabase:
+  - Use the primary key (`id`) as the cursor reference point
+  - Implement keyset pagination using `where id > last_seen_id` pattern rather than `OFFSET`
+  - Include proper indices on sorted columns
+  - Cache pagination results in Redis for frequently accessed pages
+
+## Performance Optimization
+
+- Prefer React Server Components (RSC) for data fetching operations
+- Minimize 'use client' directives, limiting them to components requiring browser APIs
+- Implement stale-while-revalidate caching strategy with Redis
+- Use dynamic imports for non-critical components
+- Preload critical data with Next.js data fetching methods
+- Implement appropriate Suspense boundaries with fallbacks
+
+## Database Schema Design
+
+- Design with scalability in mind - optimize for read performance
+- Create proper indices on frequently queried fields
+- Use Supabase's Row Level Security (RLS) policies for data protection
+- Implement proper foreign key relationships
+
+## Redis Implementation
+
+- Use Redis for:
+  - Short-link lookup cache (primary use case)
+  - Rate limiting to prevent abuse
+  - Analytics data aggregation
+  - Pagination result caching
+- Implement sensible TTL (Time-To-Live) values for cached items
+- Use Redis Sorted Sets for tracking popular/trending links
+
+## API and Function Naming
+
+- Use descriptive names for API endpoints (`/api/links/create` instead of `/api/l/c`)
+- Follow RESTful principles for API design
+- Use action verbs for function names (`createShortLink`, not `linkMaker`)
+- Prefix boolean variables with auxiliary verbs (`isLoading`, `hasError`)
+
+## Link Generation Strategy
+
+- Implement Base62 encoding for generating short links
+- Include collision detection and handling logic
+- Store original and shortened URLs in Supabase
+- Cache shortened URL lookups in Redis for performance
+
+## Authentication and Security
+
+- Implement proper authentication using Supabase Auth
+- Create appropriate RLS policies to protect user data
+- Sanitize all user inputs to prevent injection attacks
+- Implement rate limiting for API endpoints
+- Use environment variables for sensitive information
+
+## Analytics Implementation
+
+- Design an efficient schema for storing click analytics
+- Use batch processing for analytics data to minimize database load
+- Implement Redis for real-time analytics aggregation
+- Create efficient queries for analytics dashboard
+
+## Deployment and DevOps
+
+- Use Railway for deployment with proper configuration
+- Implement CI/CD pipeline for automated testing and deployment
+- Set up proper monitoring and logging
+- Configure auto-scaling based on traffic patterns
+
+## Specific Implementation Examples
+
+### Cursor-Based Pagination Implementation
+
+```typescript
+// Example of efficient cursor pagination with Supabase
+export async function getLinks({ 
+  userId, 
+  limit = 10, 
+  cursor = null 
+}: {
+  userId: string;
+  limit?: number;
+  cursor?: string | null;
+}) {
+  try {
+    let query = supabase
+      .from('links')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    // Apply cursor pagination
+    if (cursor) {
+      query = query.lt('id', cursor);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    // Get the cursor for the next page
+    const nextCursor = data.length === limit ? data[data.length - 1].id : null;
+    
+    return { data, nextCursor };
+  } catch (error) {
+    console.error('Error fetching links:', error);
+    throw error;
+  }
+}
+```
+
+### Redis Link Caching Implementation
+
+```typescript
+// Example of Redis caching for link resolution
+export async function resolveShortLink(code: string) {
+  try {
+    // First check Redis cache
+    const cachedUrl = await redis.get(`link:${code}`);
+    
+    if (cachedUrl) {
+      // Cache hit - return directly from Redis
+      return cachedUrl;
+    }
+    
+    // Cache miss - fetch from Supabase
+    const { data, error } = await supabase
+      .from('links')
+      .select('original_url')
+      .eq('short_code', code)
+      .single();
+    
+    if (error || !data) {
+      throw new Error('Link not found');
+    }
+    
+    // Store in Redis with appropriate TTL
+    await redis.set(`link:${code}`, data.original_url, 'EX', 86400); // 24-hour cache
+    
+    return data.original_url;
+  } catch (error) {
+    console.error('Error resolving short link:', error);
+    throw error;
+  }
+}
+```
+
+## Performance Best Practices
+
+- Use Supabase's PostgREST features for efficient queries
+- Implement proper indices on all columns used for filtering and ordering
+- Avoid unnecessary joins and complex queries
+- Use Redis for caching frequently accessed data
+- Implement batch processing for analytics data
+- Optimize front-end bundle size with code splitting
+
+## Error Handling and Logging
+
+- Implement comprehensive error handling throughout the application
+- Use structured logging for easier debugging
+- Create custom error classes for different types of errors
+- Provide user-friendly error messages
+
+## Testing Guidelines
+
+- Write unit tests for all critical functions
+- Implement integration tests for API endpoints
+- Use mock data for testing database interactions
+- Test pagination thoroughly with various data sizes
+
+## Documentation
+
+- Document all API endpoints with clear examples
+- Maintain up-to-date schema documentation
+- Document Redis cache structure and TTL settings
+- Create clear documentation for deployment process
+
+Follow these guidelines to create a scalable, efficient link shortener SaaS that can handle growth while maintaining performance.
