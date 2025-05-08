@@ -1,7 +1,8 @@
-version: '3.8'
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: lowlink-app-dev
     ports:
       - '3000:3000'
@@ -11,13 +12,37 @@ services:
       - redis
     volumes:
       - .:/app
-      - /app/node_modules
-    command: npm run dev
-    # Documentation: Mounts code for hot-reloading in dev
+      - /app/.next
+    command: sh -c "npm install --legacy-peer-deps && npm run dev"
+    networks:
+      - lowlink-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+    - SMTP_HOST=host.docker.internal
+    - SMTP_PORT=54325
+    - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+    - SUPABASE_URL=http://host.docker.internal:54321
+    - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+    - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
 
+  # Redis for caching
   redis:
+    container_name: lowlink-redis
     image: redis:7-alpine
-    container_name: lowlink-redis-dev
     ports:
-      - '6379:6379'
-    # Documentation: Local Redis for caching, rate limiting, analytics 
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - lowlink-network
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+networks:
+  lowlink-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

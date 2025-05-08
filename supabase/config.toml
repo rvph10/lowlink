@@ -1,0 +1,159 @@
+# LowLink Development Configuration
+# For detailed configuration reference: https://supabase.com/docs/guides/local-development/cli/config
+
+# Project identifier - this helps distinguish between different Supabase projects on the same machine
+project_id = "lowlink"
+
+[api]
+enabled = true
+port = 54321
+# Enable all public schemas for easier development
+schemas = ["public", "graphql_public", "storage", "extensions"]
+extra_search_path = ["public", "extensions"]
+# Increased row limit for development - reduce this in production
+max_rows = 5000
+
+[api.tls]
+# For local development, we usually don't need HTTPS
+enabled = false
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.pooler]
+# Connection pooler is usually not needed for local development
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+# Development migrations configuration
+[db.migrations]
+schema_paths = ["./migrations/*.sql"]
+
+# Seed data is critical for development environment
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql", "./development_seed.sql"]
+
+# Realtime features (helpful for frontend dev)
+[realtime]
+enabled = true
+
+# Studio UI for database management
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+# Use a dummy key for local development
+openai_api_key = "env(OPENAI_API_KEY)"
+
+# Email testing is very useful in development
+[inbucket]
+enabled = true
+port = 54324
+# Additional ports for app testing
+smtp_port = 54325
+pop3_port = 54326
+admin_email = "dev@lowlink.local"
+sender_name = "LowLink Dev"
+
+# Storage configuration with generous limits for development
+[storage]
+enabled = true
+# Larger file size limit for development testing
+file_size_limit = "100MiB"
+
+# Development storage buckets configuration
+[storage.buckets.avatars]
+public = true
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/gif"]
+
+[storage.buckets.links]
+public = true
+file_size_limit = "20MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/svg+xml", "application/pdf"]
+
+# Authentication configuration - more permissive for development
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+# Development redirects - add your frontend frameworks' dev server ports here
+additional_redirect_urls = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:8000",
+  "http://localhost:8080",
+  "https://localhost:3000"
+]
+# Extended JWT expiry for easier development (4 hours)
+jwt_expiry = 14400
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+# Always enable signup in development
+enable_signup = true
+# Enable anonymous auth for development/testing
+enable_anonymous_sign_ins = true
+enable_manual_linking = true
+# Lower password requirements for development
+minimum_password_length = 4
+
+# Email authentication
+[auth.email]
+enable_signup = true
+double_confirm_changes = false
+# Disable email confirmations for easier development
+enable_confirmations = false
+secure_password_change = false
+max_frequency = "0s"
+otp_length = 6
+otp_expiry = 3600
+
+# Local development email configuration
+[auth.email.smtp]
+enabled = true
+# Point to inbucket for local email testing
+host = "127.0.0.1"
+port = 54324
+user = "test"
+pass = "test"
+admin_email = "admin@lowlink.local"
+sender_name = "LowLink Dev"
+
+# SMS configuration
+[auth.sms]
+enable_signup = true
+enable_confirmations = false
+template = "Your LowLink dev code is {{ .Code }}"
+max_frequency = "1s"
+
+# Preset test OTPs for development
+[auth.sms.test_otp]
+"1234567890" = "123456"
+
+# Debug OAuth providers with longer timeouts for development
+[auth.external.github]
+enabled = false
+client_id = ""
+secret = "env(SUPABASE_AUTH_GITHUB_SECRET)"
+redirect_uri = "http://localhost:3000/auth/callback"
+skip_nonce_check = true
+
+# Edge functions configuration
+[edge_runtime]
+enabled = true
+# Hot reload for development
+policy = "oneshot"
+# Expose inspector port for debugging
+inspector_port = 8083
+deno_version = 1
+
+# Analytics - useful even in development
+[analytics]
+enabled = true
+port = 54327
+backend = "postgres"

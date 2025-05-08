@@ -1,30 +1,19 @@
-# --- Base image ---
-FROM node:20-alpine AS base
+FROM node:22-alpine
+
 WORKDIR /app
 
-# Install ALL dependencies
-COPY package.json package-lock.json* ./
-RUN npm ci --ignore-scripts
+# Copy package files first for better caching
+COPY package*.json ./
+RUN npm install --legacy-peer-deps
 
-# --- Builder image ---
-FROM base AS builder
+# Copy the rest of the application
 COPY . .
-RUN npm run build
 
-# --- Production image ---
-FROM node:20-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-
-# Copy built app and production deps from builder
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+# Set proper permissions for Next.js directories
+RUN mkdir -p .next/cache && chmod -R 777 .next
 
 # Expose port
 EXPOSE 3000
 
-# Start the Next.js app
-CMD ["npm", "run", "start"]
- 
+# Command will be provided by docker-compose
+CMD ["npm", "run", "dev"]
