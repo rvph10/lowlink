@@ -35,6 +35,7 @@ import {
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const solutions = [
   {
@@ -143,6 +144,11 @@ const resources = [
 ];
 
 const Navbar = () => {
+  const pathname = usePathname();
+  if (pathname !== "/") {
+    return null;
+  }
+
   const [open, setOpen] = useState(false);
   const [submenu, setSubmenu] = useState<
     "platform" | "usecases" | "developers" | "resources" | null
@@ -152,19 +158,19 @@ const Navbar = () => {
   // Initialize supabase client and check auth status on mount
   useEffect(() => {
     const supabase = createClient();
-    
+
     // Get initial user state
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
     });
-    
+
     // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
-    
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
     // Cleanup subscription
     return () => {
       subscription.unsubscribe();
@@ -191,7 +197,7 @@ const Navbar = () => {
                       height={32}
                     />
                     <span className="text-lg font-semibold tracking-tighter">
-                      Shadcnblocks.com
+                      Lowlink
                     </span>
                   </a>
                   <a
