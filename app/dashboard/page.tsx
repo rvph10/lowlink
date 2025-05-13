@@ -168,7 +168,7 @@ const LinkCard = ({ link }: { link: Link }) => {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex flex-col space-y-1.5">
           <Link
-            href={`/dashboard/${link.id}`}
+            href={`/dashboard/links/${link.id}`}
             className="hover:underline underline md:no-underline"
           >
             <h3 className="font-medium leading-none flex items-center gap-2">
@@ -419,7 +419,7 @@ const Dashboard = () => {
             </p>
           </div>
           <Link
-            href="/dashboard/product/new"
+            href="/dashboard/links/new"
             className={cn(
               "inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90",
               "text-xs md:text-sm md:font-semibold",

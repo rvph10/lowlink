@@ -18,7 +18,7 @@ import HistoryTab from "@/components/link-detail/tabs/HistoryTab";
 import { CardFooter, CardDescription, CardHeader } from "@/components/ui/card";
 import { CardTitle } from "@/components/ui/card";
 import { Card } from "@/components/ui/card";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -113,14 +113,13 @@ const LinkDetailPage = () => {
     return (
       <PageContainer>
         <div className="flex flex-1 flex-col space-y-6">
-          <Button
-            variant="ghost"
-            className="self-start"
-            onClick={handleBackClick}
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors duration-200"
           >
             <ChevronLeft className="h-4 w-4 mr-2" />
             Back to dashboard
-          </Button>
+          </Link>
 
           <Card className="w-full">
             <CardHeader>
@@ -145,7 +144,6 @@ const LinkDetailPage = () => {
         {/* Header with title and action buttons */}
         <LinkHeader
           link={link}
-          onBack={handleBackClick}
           onOpenEditDialog={() => setEditDialogOpen(true)}
           onOpenDeleteDialog={() => setDeleteDialogOpen(true)}
         />

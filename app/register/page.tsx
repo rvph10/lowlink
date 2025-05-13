@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
+import { toast } from "sonner";
 
 function RegisterPage() {
   const [step, setStep] = useState("email");
@@ -15,27 +17,26 @@ function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { signUp } = useAuth();
+
   const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
     hasLength: false,
     hasUppercase: false,
     hasNumber: false,
-    hasSpecial: false
+    hasSpecial: false,
   });
 
   // Email validation
   const validateEmail = (value: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!value) {
-      setEmailError("Email is required");
-      return false;
+      return "Email is required";
     } else if (!emailRegex.test(value)) {
-      setEmailError("Please enter a valid email address");
-      return false;
-    } else {
-      setEmailError("");
-      return true;
+      return "Please enter a valid email address";
     }
+    return "";
   };
 
   // Password validation and strength calculation
@@ -56,7 +57,7 @@ function RegisterPage() {
       hasLength,
       hasUppercase,
       hasNumber,
-      hasSpecial
+      hasSpecial,
     });
 
     if (!value) {
@@ -73,23 +74,53 @@ function RegisterPage() {
 
   // Handle email continue button
   const handleEmailContinue = () => {
-    if (validateEmail(email)) {
+    const error = validateEmail(email);
+    setEmailError(error);
+    if (!error) {
       setStep("password");
     }
   };
 
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const isEmailValid = validateEmail(email);
-    const isPasswordValid = validatePassword(password);
-
-    if (isEmailValid && isPasswordValid) {
-      // Here you would handle registration (API call, etc.)
-      console.log("Register with:", { email, password });
-      // For now, we'll just alert
-      alert(`Registration successful with email: ${email}`);
+  // Handle key press for email step
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && step === "email") {
+      e.preventDefault();
+      handleEmailContinue();
     }
+  };
+
+  // Handle register with email/password
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validatePassword(password)) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error } = await signUp(email, password);
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success("Check your email to confirm your account");
+        // Stay on the same page as they need to confirm their email
+      }
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      toast.error(err.message || "Failed to create account");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle register with Google
+  const handleGoogleRegister = async () => {
+    // Implementation for Google registration would go here
+    // This is placeholder functionality until we implement OAuth
+    toast.info("Google registration is not implemented yet");
   };
 
   // Get strength color based on score
@@ -131,6 +162,7 @@ function RegisterPage() {
           <Button
             variant="outline"
             className="flex h-14 w-full max-w-lg items-center justify-center gap-8 rounded-full border-muted-foreground/30"
+            onClick={handleGoogleRegister}
           >
             <Image
               className="h-5 w-5"
@@ -148,7 +180,7 @@ function RegisterPage() {
             <Separator className="flex-1" />
           </div>
 
-          <form onSubmit={handleSubmit} className="w-full max-w-lg space-y-4">
+          <form onSubmit={handleRegister} className="w-full max-w-lg space-y-4">
             {step === "email" ? (
               <>
                 <div className="relative">
@@ -159,11 +191,16 @@ function RegisterPage() {
                     placeholder="Enter Your Email"
                     type="email"
                     value={email}
+                    inputMode="email"
                     onChange={(e) => setEmail(e.target.value)}
-                    onBlur={(e) => validateEmail(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    required
+                    autoComplete="email"
                   />
                   {emailError && (
-                    <p className="text-red-500 text-xs mt-1 ml-4">{emailError}</p>
+                    <p className="text-red-500 text-xs mt-1 ml-4">
+                      {emailError}
+                    </p>
                   )}
                 </div>
 
@@ -171,8 +208,11 @@ function RegisterPage() {
                   type="button"
                   className="h-14 w-full max-w-lg rounded-full bg-foreground text-background hover:bg-foreground/90"
                   onClick={handleEmailContinue}
+                  disabled={isLoading}
                 >
-                  <span className="font-medium tracking-tight">Continue</span>
+                  <span className="font-medium tracking-tight">
+                    {isLoading ? "Processing..." : "Continue"}
+                  </span>
                 </Button>
               </>
             ) : (
@@ -186,10 +226,13 @@ function RegisterPage() {
                       placeholder="Create Password"
                       type={showPassword ? "text" : "password"}
                       value={password}
+                      inputMode="text"
                       onChange={(e) => {
                         setPassword(e.target.value);
                         validatePassword(e.target.value);
                       }}
+                      required
+                      autoComplete="new-password"
                     />
                     <button
                       type="button"
@@ -215,26 +258,50 @@ function RegisterPage() {
                     <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
                       <div
                         className={`h-full ${getStrengthColor(
-                          passwordStrength.score
+                          passwordStrength.score,
                         )}`}
                         style={{
                           width: `${(passwordStrength.score / 4) * 100}%`,
                         }}
                       ></div>
                     </div>
-                    
+
                     {/* Password requirements */}
                     <ul className="text-xs space-y-1 mt-2">
-                      <li className={passwordStrength.hasLength ? "text-green-500" : "text-gray-500"}>
+                      <li
+                        className={
+                          passwordStrength.hasLength
+                            ? "text-green-500"
+                            : "text-gray-500"
+                        }
+                      >
                         ✓ At least 8 characters
                       </li>
-                      <li className={passwordStrength.hasUppercase ? "text-green-500" : "text-gray-500"}>
+                      <li
+                        className={
+                          passwordStrength.hasUppercase
+                            ? "text-green-500"
+                            : "text-gray-500"
+                        }
+                      >
                         ✓ At least 1 uppercase letter
                       </li>
-                      <li className={passwordStrength.hasNumber ? "text-green-500" : "text-gray-500"}>
+                      <li
+                        className={
+                          passwordStrength.hasNumber
+                            ? "text-green-500"
+                            : "text-gray-500"
+                        }
+                      >
                         ✓ At least 1 number
                       </li>
-                      <li className={passwordStrength.hasSpecial ? "text-green-500" : "text-gray-500"}>
+                      <li
+                        className={
+                          passwordStrength.hasSpecial
+                            ? "text-green-500"
+                            : "text-gray-500"
+                        }
+                      >
                         ✓ At least 1 special character
                       </li>
                     </ul>
@@ -250,14 +317,16 @@ function RegisterPage() {
                       variant="outline"
                       className="h-14 w-1/2 rounded-full"
                       onClick={() => setStep("email")}
+                      disabled={isLoading}
                     >
                       Back
                     </Button>
                     <Button
                       type="submit"
                       className="h-14 w-1/2 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                      disabled={isLoading}
                     >
-                      Register
+                      {isLoading ? "Creating account..." : "Register"}
                     </Button>
                   </div>
                 </div>

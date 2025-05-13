@@ -2,19 +2,18 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, Edit, Trash2 } from "lucide-react";
-import { type Link } from "@/types/types";
+import Link from "next/link";
+import { type Link as LinkType } from "@/types/types";
 
 /**
  * Header component for the link detail page
  */
 const LinkHeader = ({
   link,
-  onBack,
   onOpenEditDialog,
   onOpenDeleteDialog,
 }: {
-  link: Link;
-  onBack: () => void;
+  link: LinkType;
   onOpenEditDialog: () => void;
   onOpenDeleteDialog: () => void;
 }) => {
@@ -22,10 +21,13 @@ const LinkHeader = ({
     <div className="flex flex-col w-full">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <Button variant="ghost" className="mr-4" onClick={onBack}>
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors duration-200"
+          >
             <ChevronLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+            Back to dashboard
+          </Link>
         </div>
 
         <div className="flex gap-2">

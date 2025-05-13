@@ -7,6 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 function LoginPage() {
   const [step, setStep] = useState("email");
@@ -15,52 +18,79 @@ function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuth();
+  const router = useRouter();
 
   // Email validation
   const validateEmail = (value: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!value) {
-      setEmailError("Email is required");
-      return false;
+      return "Email is required";
     } else if (!emailRegex.test(value)) {
-      setEmailError("Please enter a valid email address");
-      return false;
-    } else {
-      setEmailError("");
-      return true;
+      return "Please enter a valid email address";
     }
+    return "";
   };
 
   // Password validation
   const validatePassword = (value: string) => {
     if (!value) {
-      setPasswordError("Password is required");
-      return false;
-    } else {
-      setPasswordError("");
-      return true;
+      return "Password is required";
     }
+    return "";
   };
 
   // Handle email continue button
   const handleEmailContinue = () => {
-    if (validateEmail(email)) {
+    const error = validateEmail(email);
+    setEmailError(error);
+    if (!error) {
       setStep("password");
     }
   };
 
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const isEmailValid = validateEmail(email);
-    const isPasswordValid = validatePassword(password);
-
-    if (isEmailValid && isPasswordValid) {
-      // Here you would handle login (API call, etc.)
-      console.log("Login with:", { email, password });
-      // For now, we'll just alert
-      alert(`Login successful with email: ${email}`);
+  // Handle key press for email step
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && step === "email") {
+      e.preventDefault();
+      handleEmailContinue();
     }
+  };
+
+  // Handle login with email/password
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const error = validatePassword(password);
+    setPasswordError(error);
+    if (error) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error } = await signIn(email, password);
+
+      if (error) {
+        toast.error(error.message);
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      toast.error(err.message || "Failed to log in");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle login with Google
+  const handleGoogleLogin = async () => {
+    // Implementation for Google login would go here
+    // This is placeholder functionality until we implement OAuth
+    toast.info("Google login is not implemented yet");
   };
 
   return (
@@ -84,6 +114,7 @@ function LoginPage() {
           <Button
             variant="outline"
             className="flex h-14 w-full max-w-lg items-center justify-center gap-8 rounded-full border-muted-foreground/30"
+            onClick={handleGoogleLogin}
           >
             <Image
               className="h-5 w-5"
@@ -101,7 +132,7 @@ function LoginPage() {
             <Separator className="flex-1" />
           </div>
 
-          <form onSubmit={handleSubmit} className="w-full max-w-lg space-y-4">
+          <form onSubmit={handleLogin} className="w-full max-w-lg space-y-4">
             {step === "email" ? (
               <>
                 <div className="relative">
@@ -112,11 +143,16 @@ function LoginPage() {
                     placeholder="Enter Your Email"
                     type="email"
                     value={email}
+                    inputMode="email"
                     onChange={(e) => setEmail(e.target.value)}
-                    onBlur={(e) => validateEmail(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    required
+                    autoComplete="email"
                   />
                   {emailError && (
-                    <p className="text-red-500 text-xs mt-1 ml-4">{emailError}</p>
+                    <p className="text-red-500 text-xs mt-1 ml-4">
+                      {emailError}
+                    </p>
                   )}
                 </div>
 
@@ -124,8 +160,11 @@ function LoginPage() {
                   type="button"
                   className="h-14 w-full max-w-lg rounded-full bg-foreground text-background hover:bg-foreground/90"
                   onClick={handleEmailContinue}
+                  disabled={isLoading}
                 >
-                  <span className="font-medium tracking-tight">Continue</span>
+                  <span className="font-medium tracking-tight">
+                    {isLoading ? "Processing..." : "Continue"}
+                  </span>
                 </Button>
               </>
             ) : (
@@ -136,13 +175,14 @@ function LoginPage() {
                       className={`h-14 rounded-full border-none bg-muted px-5 py-4 font-medium ${
                         passwordError ? "border-2 border-red-500" : ""
                       }`}
+                      inputMode="text"
                       placeholder="Enter Password"
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        validatePassword(e.target.value);
-                      }}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onBlur={(e) => validatePassword(e.target.value)}
+                      required
+                      autoComplete="current-password"
                     />
                     <button
                       type="button"
@@ -160,26 +200,35 @@ function LoginPage() {
                   {passwordError && (
                     <p className="text-red-500 text-xs ml-4">{passwordError}</p>
                   )}
-
                   <div className="flex space-x-4">
                     <Button
                       type="button"
                       variant="outline"
                       className="h-14 w-1/2 rounded-full"
                       onClick={() => setStep("email")}
+                      disabled={isLoading}
                     >
                       Back
                     </Button>
                     <Button
                       type="submit"
                       className="h-14 w-1/2 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                      disabled={isLoading}
                     >
-                      Log in
+                      {isLoading ? "Logging in..." : "Log in"}
                     </Button>
                   </div>
                 </div>
               </>
             )}
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </form>
 
           <p className="mb-8 w-full text-center text-sm tracking-tight text-foreground">
