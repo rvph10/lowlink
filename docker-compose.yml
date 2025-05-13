@@ -1,32 +1,5 @@
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: lowlink-app-dev
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env.development
-    depends_on:
-      - redis
-    volumes:
-      - .:/app
-      - /app/.next
-    command: sh -c "npm install --legacy-peer-deps && npm run dev"
-    networks:
-      - lowlink-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    environment:
-      - SMTP_HOST=host.docker.internal
-      - SMTP_PORT=54325
-      - NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
-      - SUPABASE_URL=http://host.docker.internal:54321
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
-
-  # Redis for caching
+  # Redis service
   redis:
     container_name: lowlink-redis
     image: redis:7-alpine
@@ -34,15 +7,13 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
-    networks:
-      - lowlink-network
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ""
     restart: unless-stopped
-
-networks:
-  lowlink-network:
-    driver: bridge
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
-  postgres-data:
   redis-data:
